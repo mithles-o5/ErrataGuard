@@ -37,11 +37,13 @@ def test_revision_matching():
     rules = load_rules(Path("rules/demo"))
     rule1 = next(r for r in rules if r.erratum_id == "A53-DEMO-001")
 
-    # Affected
+    # Affected (r0p0 to r0p4)
     assert rule1.is_revision_affected("r0p0") is True
     assert rule1.is_revision_affected("r0p2") is True
-    # Unaffected
-    assert rule1.is_revision_affected("r0p3") is False
-    assert rule1.is_revision_affected("r0p4") is False
+    assert rule1.is_revision_affected("r0p4") is True
+    # Unaffected (r1p0, r0p5)
+    assert rule1.is_revision_affected("r1p0") is False
+    assert rule1.is_revision_affected("r0p5") is False
     # Missing / None
     assert rule1.is_revision_affected(None) is None
+

@@ -18,6 +18,10 @@ def render_terminal_report(report: AnalysisReport, stream: TextIO = sys.stdout) 
         f"    {report.target_cpu.architecture}",
         "CPU:",
         f"    {report.target_cpu.model} {report.target_cpu.revision or '(revision unspecified)'}",
+        "Audit:",
+        f"    Binary SHA-256: {report.binary_sha256}",
+        f"    Rule set hash:  {report.rules_hash}",
+        f"    Timestamp:      {report.timestamp}",
         "Rules:",
         f"    {report.rules_loaded} loaded",
         "Analysis:",
@@ -26,7 +30,7 @@ def render_terminal_report(report: AnalysisReport, stream: TextIO = sys.stdout) 
         f"    Detailed checks: {report.statistics.detailed_checks:,}",
         f"    Duration: {report.statistics.duration_seconds:.4f}s",
         "Result:",
-        f"    {report.result}",
+        f"    {report.result} (exit code: {report.exit_code})",
     ]
 
     if report.result == "PASS":
@@ -56,6 +60,10 @@ def render_terminal_report(report: AnalysisReport, stream: TextIO = sys.stdout) 
             lines.append("Matched conditions:")
             for cond in finding.matched_conditions:
                 lines.append(f"    ✓ {cond}")
+            if finding.matched_instructions:
+                lines.append("Matched instructions:")
+                for insn_str in finding.matched_instructions:
+                    lines.append(f"    {insn_str}")
             lines.append("Workaround:")
             lines.append(f"    {finding.workaround}")
             if finding.references:
@@ -66,7 +74,13 @@ def render_terminal_report(report: AnalysisReport, stream: TextIO = sys.stdout) 
             lines.append(f"    {finding.confidence}")
             lines.append("-" * 50)
 
+    lines.extend([
+        "",
+        "Static analysis only: does not establish runtime triggering.",
+    ])
+
     stream.write("\n".join(lines) + "\n")
+
 
 
 def render_verification_report(comparison: VerificationComparison, stream: TextIO = sys.stdout) -> None:

@@ -61,8 +61,10 @@ def format_sarif_report(report: AnalysisReport, indent: int = 2) -> str:
                 "function": f.function or "<unknown>",
                 "confidence": f.confidence,
                 "conditions": list(f.matched_conditions),
+                "matched_instructions": list(f.matched_instructions),
             },
         })
+
 
     sarif_data = {
         "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",

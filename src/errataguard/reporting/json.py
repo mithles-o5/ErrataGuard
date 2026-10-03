@@ -29,12 +29,18 @@ def to_dict_report(report: AnalysisReport) -> dict[str, Any]:
             "workaround": f.workaround,
             "references": list(f.references),
             "confidence": f.confidence,
+            "matched_instructions": list(f.matched_instructions),
         })
 
     return {
         "tool": {
             "name": "ErrataGuard",
             "version": __version__,
+        },
+        "audit": {
+            "binary_sha256": report.binary_sha256,
+            "rules_hash": report.rules_hash,
+            "timestamp": report.timestamp,
         },
         "binary": {
             "path": str(report.binary_path),
@@ -53,8 +59,11 @@ def to_dict_report(report: AnalysisReport) -> dict[str, Any]:
             "stage_durations": {k: round(v, 6) for k, v in report.statistics.stage_durations.items()},
         },
         "result": report.result,
+        "exit_code": report.exit_code,
+        "note": "Static analysis only: does not establish runtime triggering.",
         "findings": findings_data,
     }
+
 
 
 def to_dict_comparison(comp: VerificationComparison) -> dict[str, Any]:

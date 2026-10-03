@@ -21,6 +21,7 @@ class Finding:
     workaround: str
     references: tuple[str, ...]
     confidence: str
+    matched_instructions: tuple[str, ...] = ()
 
     @property
     def source_display(self) -> str:
@@ -49,6 +50,9 @@ class AnalysisReport:
     statistics: AnalysisStatistics
     findings: list[Finding]
     result: str  # "PASS", "FAIL", or "INCOMPLETE"
+    rules_hash: str = ""
+    timestamp: str = ""
+
 
     @property
     def is_pass(self) -> bool:

@@ -80,8 +80,9 @@ def test_pipeline_negative_binary(rules, negative_elf):
 
 
 def test_pipeline_unaffected_revision(rules, vulnerable_elf):
-    # r0p4 is unaffected by A53-DEMO-001
-    cpu = CPUInfo(architecture="AArch64", model="cortex-a53", revision="r0p4")
+    # r1p0 is unaffected by A53-DEMO-001 (affected range is r0p0 to r0p4)
+    cpu = CPUInfo(architecture="AArch64", model="cortex-a53", revision="r1p0")
+
     elf = parse_elf(vulnerable_elf)
     verifier = StaticVerifier(rules=rules, cpu=cpu)
 

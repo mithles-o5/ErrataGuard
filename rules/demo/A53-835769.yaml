@@ -1,0 +1,26 @@
+erratum: A53-835769
+title: "64-bit multiply-accumulate instruction may produce incorrect result"
+architecture: AArch64
+cpu: Cortex-A53
+authoritative: true
+affected_revisions:
+  - r0p0
+  - r0p1
+  - r0p2
+  - r0p3
+  - r0p4
+candidate:
+  mnemonics:
+    - madd
+    - msub
+conditions:
+  - type: instruction_sequence
+    description: "64-bit multiply-accumulate preceded by load/store/multiply instruction"
+    pattern: []
+workaround:
+  description: >
+    Insert a NOP between the preceding instruction and the 64-bit multiply-accumulate instruction, or compile with GCC flag -mfix-cortex-a53-835769.
+  suggestion: "Pass -mfix-cortex-a53-835769 to compiler/linker or insert NOP"
+references:
+  - "Arm Cortex-A53 MPCore Software Developers Errata Notice, Document ID: ARM-EPM-048406, Erratum 835769, Section 7.1"
+severity: warning

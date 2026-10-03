@@ -120,6 +120,12 @@ class StaticVerifier:
         else:
             result = "PASS"
 
+        from datetime import datetime, timezone
+        import hashlib
+        rules_sig = "_".join(sorted(f"{r.erratum_id}:{r.title}" for r in self.rules))
+        rules_hash = hashlib.sha256(rules_sig.encode()).hexdigest()[:16]
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
         return AnalysisReport(
             binary_path=elf.path,
             binary_sha256=elf.sha256,
@@ -128,6 +134,8 @@ class StaticVerifier:
             statistics=stats,
             findings=findings,
             result=result,
+            rules_hash=rules_hash,
+            timestamp=timestamp,
         )
 
     def _create_finding(
@@ -160,7 +168,9 @@ class StaticVerifier:
             workaround=rule.workaround.description,
             references=rule.references,
             confidence=match_result.confidence,
+            matched_instructions=match_result.matched_instructions,
         )
+
 
 
 def compare_reports(before: AnalysisReport, after: AnalysisReport) -> "VerificationComparison":

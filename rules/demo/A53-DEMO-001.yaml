@@ -1,5 +1,5 @@
 erratum: A53-DEMO-001
-title: Demo ADRP-LDR sequence vulnerability
+title: "Demo rule: ADRP followed by dependent LDR (not an Arm erratum)"
 architecture: AArch64
 cpu: Cortex-A53
 authoritative: false
@@ -7,6 +7,8 @@ affected_revisions:
   - r0p0
   - r0p1
   - r0p2
+  - r0p3
+  - r0p4
 candidate:
   mnemonics:
     - adrp
@@ -21,8 +23,8 @@ conditions:
     offset: 1
 workaround:
   description: >
-    DEMO ONLY. Insert a NOP or insert an intervening independent instruction between ADRP and LDR.
+    Insert a NOP or an intervening independent instruction between ADRP and the dependent load, or apply toolchain mitigation flag -mfix-cortex-a53-843419.
   suggestion: "Insert NOP between ADRP and LDR"
 references:
-  - "DEMO RULE - NON-AUTHORITATIVE ARCHITECTURAL DEMO"
+  - "Arm Cortex-A53 MPCore Software Developers Errata Notice, Document ID: ARM-EPM-048406, Erratum 843419, Section 7.2"
 severity: warning

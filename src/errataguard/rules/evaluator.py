@@ -22,6 +22,7 @@ class MatchResult:
     confidence: str = "Static match"
     incomplete_cpu_revision: bool = False
     details: str = ""
+    matched_instructions: tuple[str, ...] = ()
 
 
 class RuleEvaluator:
@@ -36,8 +37,13 @@ class RuleEvaluator:
         if not rule.is_cpu_applicable(context.cpu.architecture, context.cpu.model):
             return None
 
+        # 2. Verify candidate instruction
+        if not rule.candidate.matches_mnemonic(context.candidate.mnemonic):
+            return None
+
         matched_conditions: list[str] = [f"candidate instruction '{context.candidate.mnemonic}'"]
         incomplete_revision = False
+
 
         # 2. Verify CPU revision
         rev_status = rule.is_revision_affected(context.cpu.revision)
@@ -47,12 +53,23 @@ class RuleEvaluator:
         elif rev_status is None:
             # CPU revision required but not provided
             incomplete_revision = True
+            range_info = (
+                f"{rule.affected_revisions[0]} to {rule.affected_revisions[-1]}"
+                if len(rule.affected_revisions) > 1
+                else ", ".join(rule.affected_revisions)
+            )
             matched_conditions.append(
-                f"CPU revision unspecified (affected revisions: {', '.join(rule.affected_revisions)})"
+                f"CPU revision unspecified (affected range: {range_info})"
             )
         else:
             rev_str = context.cpu.revision or "all"
-            matched_conditions.append(f"CPU revision affected ({rev_str})")
+            if rule.affected_revisions:
+                min_rev = rule.affected_revisions[0]
+                max_rev = rule.affected_revisions[-1]
+                range_info = f"{min_rev} to {max_rev}" if len(rule.affected_revisions) > 1 else min_rev
+                matched_conditions.append(f"CPU revision affected: {rev_str} (within affected range {range_info})")
+            else:
+                matched_conditions.append(f"CPU revision affected ({rev_str})")
 
         # 3. Evaluate each condition
         for cond in rule.conditions:
@@ -61,12 +78,24 @@ class RuleEvaluator:
                 return None
             matched_conditions.append(cond_result[1])
 
+        # 4. Extract matched instruction disassembly lines for evidence
+        matched_insns: list[str] = [context.candidate.display]
+        for cond in rule.conditions:
+            if cond.type.lower() == "instruction_sequence":
+                pattern = cond.params.get("pattern", [])
+                for step_idx in range(len(pattern)):
+                    target_idx = context.candidate_index + step_idx + 1
+                    if target_idx < len(context.instructions):
+                        matched_insns.append(context.instructions[target_idx].display)
+
         return MatchResult(
             matched=True,
             matched_conditions=tuple(matched_conditions),
             confidence="Static match" if not incomplete_revision else "Incomplete CPU verification",
             incomplete_cpu_revision=incomplete_revision,
+            matched_instructions=tuple(matched_insns),
         )
+
 
     def _evaluate_condition(
         self,

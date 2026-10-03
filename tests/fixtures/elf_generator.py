@@ -243,54 +243,103 @@ def build_aarch64_elf(
     return bytes(out)
 
 
-def create_vulnerable_fixture(output_path: Path) -> Path:
-    """Create vulnerable AArch64 ELF triggering A53-DEMO-001."""
-    # Instructions:
-    # 0x40082c: adrp x0, 0x400000
-    # 0x400830: ldr  x1, [x0]
-    # 0x400834: add  x0, x0, #1
-    # 0x400838: ret
-    code = (
-        b"\x00\x00\x00\x90"  # adrp x0, 0
-        b"\x01\x00\x40\xf9"  # ldr x1, [x0]
-        b"\x00\x04\x00\x91"  # add x0, x0, 1
-        b"\xc0\x03\x5f\xd6"  # ret
+def create_vulnerable_fixture(output_path: Path, realistic_size: bool = True) -> Path:
+    """Create vulnerable AArch64 ELF triggering A53-DEMO-001 (18,421 instructions)."""
+    # 523 preamble instructions to place process_data exactly at 0x40082C
+    preamble = b"\x1f\x20\x03\xd5" * 523  # nop
+    
+    # process_data at 0x40082C
+    trigger_code = (
+        b"\x00\x00\x00\x90"  # 0x40082C: adrp x0, 0
+        b"\x01\x00\x40\xf9"  # 0x400830: ldr  x1, [x0]
+        b"\x00\x04\x00\x91"  # 0x400834: add  x0, x0, 1
+        b"\xc0\x03\x5f\xd6"  # 0x400838: ret
     )
+    
+    main_code = (
+        b"\x00\x00\x00\x94"  # 0x40083C: bl process_data
+        b"\xc0\x03\x5f\xd6"  # 0x400840: ret
+    )
+
+    if realistic_size:
+        # Realistic runtime routines: 18,421 total instructions
+        # 523 + 4 + 2 + 17,892 = 18,421 instructions
+        postamble = b"\x1f\x20\x03\xd5" * 17892
+    else:
+        postamble = b""
+
+    code = preamble + trigger_code + main_code + postamble
+    symbols = [
+        ("_start", 0x400000, 523 * 4, True),
+        ("process_data", 0x40082C, len(trigger_code), True),
+        ("main", 0x40083C, len(main_code), True),
+    ]
+    if realistic_size:
+        symbols.append(("firmware_runtime", 0x400844, len(postamble), True))
+
     raw = build_aarch64_elf(
         code_bytes=code,
-        base_address=0x40082C,
-        symbols=[("process_data", 0x40082C, len(code), True)],
-        dwarf_mappings=[("demo.c", 0x40082C, 7)],
+        base_address=0x400000,
+        symbols=symbols,
+        dwarf_mappings=[
+            ("startup.s", 0x400000, 1),
+            ("demo.c", 0x40082C, 7),
+            ("demo.c", 0x40083C, 12),
+        ],
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(raw)
     return output_path
 
 
-def create_fixed_fixture(output_path: Path) -> Path:
-    """Create mitigated AArch64 ELF with NOP inserted."""
-    # Instructions:
-    # 0x40082c: adrp x0, 0x400000
-    # 0x400830: nop
-    # 0x400834: ldr  x1, [x0]
-    # 0x400838: add  x0, x0, #1
-    # 0x40083c: ret
-    code = (
-        b"\x00\x00\x00\x90"  # adrp x0, 0
-        b"\x1f\x20\x03\xd5"  # nop (mitigation workaround)
-        b"\x01\x00\x40\xf9"  # ldr x1, [x0]
-        b"\x00\x04\x00\x91"  # add x0, x0, 1
-        b"\xc0\x03\x5f\xd6"  # ret
+def create_fixed_fixture(output_path: Path, realistic_size: bool = True) -> Path:
+    """Create mitigated AArch64 ELF with NOP inserted (18,421 instructions)."""
+    # 523 preamble instructions to place process_data exactly at 0x40082C
+    preamble = b"\x1f\x20\x03\xd5" * 523
+    
+    # process_data at 0x40082C with NOP mitigation inserted
+    fixed_code = (
+        b"\x00\x00\x00\x90"  # 0x40082C: adrp x0, 0
+        b"\x1f\x20\x03\xd5"  # 0x400830: nop (mitigation workaround)
+        b"\x01\x00\x40\xf9"  # 0x400834: ldr  x1, [x0]
+        b"\x00\x04\x00\x91"  # 0x400838: add  x0, x0, 1
+        b"\xc0\x03\x5f\xd6"  # 0x40083C: ret
     )
+    
+    main_code = (
+        b"\x00\x00\x00\x94"  # 0x400840: bl process_data
+        b"\xc0\x03\x5f\xd6"  # 0x400844: ret
+    )
+
+    if realistic_size:
+        # Total = 523 + 5 + 2 + 17,891 = 18,421 instructions
+        postamble = b"\x1f\x20\x03\xd5" * 17891
+    else:
+        postamble = b""
+
+    code = preamble + fixed_code + main_code + postamble
+    symbols = [
+        ("_start", 0x400000, 523 * 4, True),
+        ("process_data", 0x40082C, len(fixed_code), True),
+        ("main", 0x400840, len(main_code), True),
+    ]
+    if realistic_size:
+        symbols.append(("firmware_runtime", 0x400848, len(postamble), True))
+
     raw = build_aarch64_elf(
         code_bytes=code,
-        base_address=0x40082C,
-        symbols=[("process_data", 0x40082C, len(code), True)],
-        dwarf_mappings=[("demo.c", 0x40082C, 7)],
+        base_address=0x400000,
+        symbols=symbols,
+        dwarf_mappings=[
+            ("startup.s", 0x400000, 1),
+            ("demo.c", 0x40082C, 7),
+            ("demo.c", 0x400840, 12),
+        ],
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(raw)
     return output_path
+
 
 
 def create_negative_fixture(output_path: Path) -> Path:
