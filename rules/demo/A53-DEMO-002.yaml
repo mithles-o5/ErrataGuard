@@ -1,0 +1,23 @@
+erratum: A53-DEMO-002
+title: Demo System Register MRS sequence hazard
+architecture: AArch64
+cpu: Cortex-A53
+authoritative: false
+affected_revisions:
+  - r0p0
+  - r0p1
+candidate:
+  mnemonics:
+    - mrs
+conditions:
+  - type: instruction_sequence
+    description: "MRS system instruction followed by ISB or DSB"
+    pattern:
+      - isb
+workaround:
+  description: >
+    DEMO ONLY. Ensure memory barrier order or insert spacer instructions.
+  suggestion: "Follow ARM architecture synchronization guidelines for system register updates"
+references:
+  - "DEMO RULE - NON-AUTHORITATIVE ARCHITECTURAL DEMO"
+severity: warning
